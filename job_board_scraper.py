@@ -4,9 +4,10 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import time
 import hashlib
+import re
 
 # Creating pandas DF to hold job data
-columns = ["unique_id", "job_title", "company_name"] #["unique_id", "job_title", "company", "location", "summary"]
+columns = ["unique_id", "job_title", "company_name", "location", "summary", "job_url", "job_board"]
 job_df = pd.DataFrame(columns=columns)
 
 class Indeed:
@@ -36,8 +37,8 @@ class Indeed:
             # Adding company to job_post
             company = div.find_all(name="span", attrs={"class":"company"})
             if len(company) > 0:
-                for b in company:
-                    job_post.append(b.text.strip())
+                for span in company:
+                    job_post.append(span.text.strip())
             else:
                 sec_try = div.find_all(name="span", attrs={"class":"result-link_source"})
                 for span in sec_try:
@@ -46,21 +47,40 @@ class Indeed:
             # Creating unique id for each posting
             text_ids = [''.join(job_post[:2])]
             unique_id = self.create_unique_id(text_ids)
-            print(unique_id)
 
+            # Checking for duplicates in data frame, go to next iteration if dup.
             if any(job_df.unique_id == unique_id):
                 continue
-            else:
-                job_post.insert(0, unique_id)
 
+            # Insert unique_id in the beginning of job post
+            job_post.insert(0, unique_id)
 
+            # Grabbing job location
+            location = div.find_all(name="span", attrs={"class":"location"})
+            for span in location:
+                # Removing numbers and tags
+                span_stripped = span.text.strip()
+                span_text = re.sub(r'\d+', '', span_stripped)
+                job_post.append(span_text)
 
+            # Grabbing summary
+            summary = div.find_all(name="span", attrs={"class":"summary"})
+            for span in summary:
+                job_post.append(span.text.strip())
 
+            # Grabbing url from job posting
+            for a in div.find_all(name="a", attrs={"data-tn-element":"jobTitle"}):
+                job_href = a["href"]
+                job_url = "https://www.indeed.com"+job_href
+                job_post.append(job_url)
+
+            # Adding job board to end of job listing
+            job_post.append("Indeed")
+
+            # Add job posting to job data frame
             job_df.loc[num] = job_post
 
-
-
-        #return(job_df)
+        return(job_df)
 
     def grab_jobs(self, jobTitle, location):
         # Modify job title & location
@@ -80,7 +100,7 @@ class Indeed:
 
         job_df = self.extract_data(soup)
 
-        #job_df.to_csv("job_listings.csv", encoding='utf-8')
+        return job_df
 
 if __name__ == "__main__":
     # Grabbing variables to send in to each scraper
@@ -93,4 +113,6 @@ if __name__ == "__main__":
 
     # Indeed is the first site to scrape
     indeed_scraper = Indeed()
-    indeed_scraper.grab_jobs(jobTitle, location)
+    job_df = indeed_scraper.grab_jobs(jobTitle, location)
+
+    job_df.to_csv("job_listings.csv", encoding='utf-8')
