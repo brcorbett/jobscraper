@@ -102,6 +102,112 @@ class Indeed:
 
         return job_df
 
+class Glassdoor:
+    def create_unique_id(self, text_ids):
+        # Create unique id for job listing with title+company
+        m = hashlib.md5()
+        text_id = str(text_ids).encode('utf-8')
+        string_id = text_id.replace(" ","")
+        m.update(string_id)
+        unique_id = str(int(m.hexdigest(), 16))[0:12]
+
+        return unique_id
+
+    def extract_data(self, soup):
+        # Searching through all the jobs
+        for div in soup.find_all(name="article", attrs={"id":"MainCol"}):
+            # Creating index for job posting in data frame
+            num = (len(job_df) + 1)
+
+            # Empty list for job postings
+            job_post = []
+
+            job_listing =  div.find_all(name="i", attrs={"class":"info"})
+            for i in job_listing:
+                # Adding job title to job_post
+                job_post.append(i["data-jobtitle"])
+                # Adding company to job_post
+                job_post.append(i["data-employer-shortname"])
+
+            # Creating unique id for each posting
+            text_ids = [''.join(job_post[:2])]
+            unique_id = self.create_unique_id(text_ids)
+
+            # Checking for duplicates in data frame, go to next iteration if dup.
+            if any(job_df.unique_id == unique_id):
+                continue
+
+            # Insert unique_id in the beginning of job post
+            job_post.insert(0, unique_id)
+
+
+
+        return job_df
+
+
+    def grab_jobs(self, jobTitle, location):
+        # Glassdoor doesn't accept get requests without a header.
+        headers = {	'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+				    'accept-encoding': 'gzip, deflate, sdch, br',
+				    'accept-language': 'en-GB,en-US;q=0.8,en;q=0.6',
+				    'referer': 'https://www.glassdoor.com/',
+				    'upgrade-insecure-requests': '1',
+				    'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/51.0.2704.79 Chrome/51.0.2704.79 Safari/537.36',
+				    'Cache-Control': 'no-cache',
+				    'Connection': 'keep-alive'
+	                   }
+
+    	location_headers = {
+    		'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.01',
+    		'accept-encoding': 'gzip, deflate, sdch, br',
+    		'accept-language': 'en-GB,en-US;q=0.8,en;q=0.6',
+    		'referer': 'https://www.glassdoor.com/',
+    		'upgrade-insecure-requests': '1',
+    		'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/51.0.2704.79 Chrome/51.0.2704.79 Safari/537.36',
+    		'Cache-Control': 'no-cache',
+    		'Connection': 'keep-alive'
+    	       }
+    	data = {
+            "term": location,
+    		"maxLocationsToReturn": 10
+            }
+
+        location_url = "https://www.glassdoor.co.in/findPopularLocationAjax.htm?"
+
+        try:
+                # Getting location id for search location
+                time.sleep(1)
+                location_response = requests.post(location_url, headers=location_headers, data=data).json()
+                place_id = location_response[0]['locationId']
+                job_listing_url = 'https://www.glassdoor.com/Job/jobs.htm'
+
+                data = {
+                    'clickSource': 'searchBtn',
+    			    'sc.keyword': jobTitle,
+    			    'locT': 'C',
+    			    'locId': place_id,
+    			    'jobType': ''
+                }
+
+                if place_id:
+                    time.sleep(1)
+                    r = requests.post(job_listing_url, headers=headers, data=data)
+
+                    # Convert html_doc with BeautifulSoup
+                    soup = BeautifulSoup(r.text, 'html.parser')
+
+                    job_df = self.extract_data(soup)
+
+                    #return job_df
+
+                else:
+                    print "Location id is not available"
+
+
+        except:
+                print("Location gathering failed")
+
+
 if __name__ == "__main__":
     # Grabbing variables to send in to each scraper
     # jobTitle = raw_input('Enter job title: ')
@@ -112,7 +218,10 @@ if __name__ == "__main__":
     location = "San Diego"
 
     # Indeed is the first site to scrape
-    indeed_scraper = Indeed()
-    job_df = indeed_scraper.grab_jobs(jobTitle, location)
+    # indeed_scraper = Indeed()
+    # job_df = indeed_scraper.grab_jobs(jobTitle, location)
 
-    job_df.to_csv("job_listings.csv", encoding='utf-8')
+    glass_scraper = Glassdoor()
+    glass_scraper.grab_jobs(jobTitle, location)
+
+    #job_df.to_csv("job_listings.csv", encoding='utf-8')
