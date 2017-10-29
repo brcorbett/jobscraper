@@ -80,8 +80,6 @@ class Indeed:
             # Add job posting to job data frame
             job_df.loc[num] = job_post
 
-        return(job_df)
-
     def grab_jobs(self, jobTitle, location):
         # Modify job title & location
         formatted_job_title = jobTitle.replace(" ", "-")
@@ -98,9 +96,7 @@ class Indeed:
         # Convert html_doc with BeautifulSoup
         soup = BeautifulSoup(r.text, 'html.parser')
 
-        job_df = self.extract_data(soup)
-
-        return job_df
+        self.extract_data(soup)
 
 class Glassdoor:
     def create_unique_id(self, text_ids):
@@ -115,19 +111,18 @@ class Glassdoor:
 
     def extract_data(self, soup):
         # Searching through all the jobs
-        for div in soup.find_all(name="article", attrs={"id":"MainCol"}):
+        for div in soup.find_all(name="li", attrs={"data-is-organic-job":"false"}):
             # Creating index for job posting in data frame
             num = (len(job_df) + 1)
 
             # Empty list for job postings
             job_post = []
 
-            job_listing =  div.find_all(name="i", attrs={"class":"info"})
-            for i in job_listing:
-                # Adding job title to job_post
-                job_post.append(i["data-jobtitle"])
-                # Adding company to job_post
-                job_post.append(i["data-employer-shortname"])
+            job_listing = div.find(name="i", attrs={"class":"info"})
+            # Adding job title to job_post
+            job_post.append(job_listing["data-jobtitle"])
+            # Adding company to job_post
+            job_post.append(job_listing["data-employer-shortname"])
 
             # Creating unique id for each posting
             text_ids = [''.join(job_post[:2])]
@@ -140,9 +135,27 @@ class Glassdoor:
             # Insert unique_id in the beginning of job post
             job_post.insert(0, unique_id)
 
+            # Add location to job_listing
+            location = div.find_all(name="span", attrs={"class":"subtle loc"})
+            for span in location:
+                job_post.append(span.text.strip())
+
+            # Summary maybe be addressed in future
+            job_post.append("N/A")
+
+            # Grab url from job post
+            a = div.find(name="a", attrs={"class":"jobLink"})
+            job_href = a["href"]
+            job_url = "https://www.glassdoor.com"+job_href
+            job_post.append(job_url)
 
 
-        return job_df
+            # Adding job board to end of listing
+            job_post.append("Glassdoor")
+
+            # Add job posting to job data frame
+            job_df.loc[num] = job_post
+
 
 
     def grab_jobs(self, jobTitle, location):
@@ -196,16 +209,15 @@ class Glassdoor:
                     # Convert html_doc with BeautifulSoup
                     soup = BeautifulSoup(r.text, 'html.parser')
 
-                    job_df = self.extract_data(soup)
-
-                    #return job_df
-
+                    self.extract_data(soup)
                 else:
                     print "Location id is not available"
 
 
-        except:
-                print("Location gathering failed")
+
+        except Exception as e:
+                pass
+                #print e
 
 
 if __name__ == "__main__":
@@ -218,10 +230,10 @@ if __name__ == "__main__":
     location = "San Diego"
 
     # Indeed is the first site to scrape
-    # indeed_scraper = Indeed()
-    # job_df = indeed_scraper.grab_jobs(jobTitle, location)
+    indeed_scraper = Indeed()
+    indeed_scraper.grab_jobs(jobTitle, location)
 
     glass_scraper = Glassdoor()
     glass_scraper.grab_jobs(jobTitle, location)
 
-    #job_df.to_csv("job_listings.csv", encoding='utf-8')
+    job_df.to_csv("job_listings.csv", encoding='utf-8')
