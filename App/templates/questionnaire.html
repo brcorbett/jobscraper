@@ -3,10 +3,10 @@
 <!-- This page is provided to users who sign up for the first time! -->
 <html>
   <head>
-    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static',filename='favicon.ico') }}" />
     <meta charset="UTF-8">
     <title>Personalize!</title>
-    <link rel = "stylesheet" type = "text/css" href = "questionnaire.css" />
+    <link rel = "stylesheet" type = "text/css" href = "{{ url_for('static',filename='styles/questionnaire.css') }}" />
   </head>
   <body>
   <IMG STYLE="position:absolute; TOP:0px; LEFT: 0px;" SRC="newlogo.png">
