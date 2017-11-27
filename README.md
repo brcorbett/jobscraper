@@ -4,9 +4,10 @@ Goal of the program is to scrape a variety of job boards and
 aggregate them together for easy access.
 
 # How To Run
-1. Install Python 2.7.x ''' https://www.python.org/downloads/release/python-2713/ '''
-2. Install Pandas ''' py -2.7 -m pip install pandas '''
-3. Install BeautifulSoup ''' pip install beautifulsoup4 '''
+'''
+1. Install Python 2.7.x  https://www.python.org/downloads/release/python-2713/
+2. Install Pandas  py -2.7 -m pip install pandas 
+3. Install BeautifulSoup  pip install beautifulsoup4 '''
 
 # Technologies Used
 Python - The foundation for job scraping and data aggregation
